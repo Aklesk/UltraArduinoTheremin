@@ -1,39 +1,27 @@
-/* HC-SR04 Sensor
-   https://www.dealextreme.com/p/hc-sr04-ultrasonic-sensor-distance-measuring-module-133696
-  
-   This sketch reads a HC-SR04 ultrasonic rangefinder and returns the
-   distance to the closest object in range. To do this, it sends a pulse
-   to the sensor to initiate a reading, then listens for a pulse 
-   to return.  The length of the returning pulse is proportional to 
-   the distance of the object from the sensor.
-     
-   The circuit:
-  * VCC connection of the sensor attached to +5V
-  * GND connection of the sensor attached to ground
-  * TRIG connection of the sensor attached to digital pin 2
-  * ECHO connection of the sensor attached to digital pin 4
-   Original code for Ping))) example was created by David A. Mellis
-   Adapted for HC-SR04 by Tautvidas Sipavicius
-   This example code is in the public domain.
+/* Theremin
+   Project to build a simple theremin using an arduino and two HC-SR04 sensors wired in parallel
+   for better accuracy.
+
+   Code written by Wolf Hatch, with thanks to various public domain examples.
  */
 
 
 const int trigPin = 2;
 const int echoPin = 4;
 const int toneOut = 6;
-const int numReadings = 10;     // number of readings over which to average our output
+const int numReadings = 20;     // number of readings over which to average our output
 const int timeout = 5;          // Number of times we read zero before stopping output
 
 int readings[numReadings];      // the readings from the analog input
 int readIndex = 0;              // the index of the current reading
-int total = 0;                  // the total of all current readings
+long total = 0;                  // the total of all current readings
 int average = 0;                // the average
-
+int freq = 0;                   // the frequency this reading has converted to
 int zeros = 0;                  // tally of consecutive readings of 0
 
 void setup() {
   // initialize serial communication:
-  // Serial.begin(9600);
+  Serial.begin(9600);
   
   // initialize all the readings to 0:
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
@@ -44,7 +32,7 @@ void setup() {
 void loop()
 {
 
-  long duration; // duration of pingback
+  int duration; // duration of pingback
 
   // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
   // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
@@ -59,7 +47,7 @@ void loop()
   // duration is the time (in microseconds) from the sending
   // of the ping to the reception of its echo off of an object.
   pinMode(echoPin, INPUT);
-  duration = pulseIn(echoPin, HIGH, 2500);
+  duration = pulseIn(echoPin, HIGH, 2800);
 
   // If we've read a zero, add it to the zero tally and loop back
   // Otherwise input our reading into the averaging code
@@ -75,37 +63,46 @@ void loop()
       for (int thisReading = 0; thisReading < numReadings; thisReading++) {
         readings[thisReading] = 0;
       }
+      total = 0;
       average = 0;
       zeros = 0;
     }
   }
   else {
-    zeros = 0;                             // reset timeout tally
-    total = total - readings[readIndex];   // subtract last reading
-    readings[readIndex] = duration;        // input current reading
-    readIndex = readIndex + 1;             // advance to the next position in the array
+    freq = 440 * pow(2, round(duration / 38 - 16) / 12.0);   // snap the reading to musical note frequency
+    zeros = 0;                                               // reset timeout tally
+    total = total - readings[readIndex];                     // subtract last reading
+    readings[readIndex] = freq;                              // input current reading
+    total = total + readings[readIndex];                     // add new reading to total
+    readIndex = readIndex + 1;                               // advance to the next position in the array
   
     // if we're at the end of the array...
     if (readIndex >= numReadings) {
       // ...wrap around to the beginning:
       readIndex = 0;
     }
-  
-    // Add up all of the entries and divide for the average
-    total = 0;
-    for (int i = 0; i < numReadings; i++) {
-      total += readings[i];
-    }
     
     // calculate the average:
     average = total / numReadings;
   }
-    
-  // Serial.print(average);
-  // Serial.println();
 
-  if (average != 0) {
-    tone(toneOut, average * 1.5);
+  // now normalize the value to standard musical frequencies
+    
+  Serial.print(average);
+  Serial.println();
+
+  // To prevent warble when getting a first reading after silence
+  // wait until the readings all have a value before sounding
+  // this also filters out random noise from the sensors
+  int zeroReadings = 0;
+  for (int i = 0; i < numReadings; i++) {
+    if (readings[i] == 0) {
+      zeroReadings++;
+    }
+  }
+
+  if (average != 0 && zeroReadings == 0) {
+    tone(toneOut, average);
   }
   else {
     noTone(toneOut);
