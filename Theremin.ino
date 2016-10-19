@@ -27,6 +27,10 @@ void setup() {
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
     readings[thisReading] = 0;
   }
+
+  // Set up the raw output override pin
+  pinMode(8, INPUT);
+  digitalWrite(8, HIGH);
 }
 
 void loop()
@@ -101,7 +105,15 @@ void loop()
     }
   }
 
-  if (average != 0 && zeroReadings == 0) {
+  if (digitalRead(8) == 0){
+    if (duration > 100) {
+      tone(toneOut, duration * 1.5);
+    }
+    else {
+      noTone(toneOut);
+    }
+  }
+  else if (average != 0 && zeroReadings == 0) {
     tone(toneOut, average);
   }
   else {
