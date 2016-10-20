@@ -21,7 +21,7 @@ int zeros = 0;                  // tally of consecutive readings of 0
 
 void setup() {
   // initialize serial communication:
-  Serial.begin(9600);
+  // Serial.begin(9600);
   
   // initialize all the readings to 0:
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
@@ -89,11 +89,9 @@ void loop()
     // calculate the average:
     average = total / numReadings;
   }
-
-  // now normalize the value to standard musical frequencies
     
-  Serial.print(average);
-  Serial.println();
+  // Serial.print(average);
+  // Serial.println();
 
   // To prevent warble when getting a first reading after silence
   // wait until the readings all have a value before sounding
